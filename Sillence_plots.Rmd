@@ -1,0 +1,81 @@
+---
+title: "Sillence model plots"
+output: html_notebook
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(InteractionPoweR)
+library(tidyverse)
+source("pwr_fns.R")
+```
+
+```{r load_powers}
+
+load("Sillence_model_specific.Rdata")
+load("Sillence_analytic_results.Rdata")
+load("Sillence_simpr_all.Rdata")
+
+## Hypothesis: maybe simulation doesn't account for suppression/enhancement?
+
+normal_sim_pwr = normal_sim %>% 
+  simpr_pwr_calc
+
+range_sim_pwr = range_sim %>% 
+  simpr_pwr_calc
+
+```
+
+
+## Plots
+
+```{r plot_sims}
+df = list(`1. analytic, simple` = sillence_pwr2ppl %>% rename(pwr = Power, N = n),
+     `2. analytic, suppress/enhance` = ipr_an_r1.0,
+     `3. analytic, measurement error` = ipr_an,
+     `4. model-specific simulation`= ipr_sim_c,
+     `5. custom sim, replication` = normal_sim_pwr,
+     `6. custom sim, range restriction` = range_sim_pwr) %>% 
+  bind_rows(.id = "tool") %>% 
+  mutate(num = str_sub(tool, 1, 1))
+
+
+dfs = map(setNames(nm = 1:6), ~ filter(df, num <= .x))
+
+get_plot = function(x)
+  ggplot(x, aes(N, pwr, color = tool, group = tool)) + 
+  geom_line() +
+  scale_color_brewer(type = "qual") +
+  coord_cartesian(ylim = c(0, 1)) +
+  scale_y_continuous(breaks = (0:5)/5) +
+  geom_hline(yintercept = 0.8, color = "blue", linetype = "dashed") +
+  ylab("Power")
+
+
+plots = map(dfs, get_plot)
+
+imap(plots, ~ ggsave(plot = .x, filename = str_glue("LnL_Plot_{.y}.png"), 
+                     width = 5, height = 3))
+
+
+```
+For email: compare power_interaction_R2 and power_interaction solutions
+```{r plot_david_email}
+list(`power_interaction_R2()` = ipr_an,
+     `power_interaction()`= ipr_sim_c) %>% 
+  bind_rows(.id = "tool") %>% 
+  ggplot(aes(N, pwr, color = tool, group = tool, linetype = tool)) + 
+  geom_line() +
+  scale_color_brewer(type = "qual") +
+  coord_cartesian(ylim = c(0, 1))
+
+```
+
+
+```{r plot_all}
+load("Sillence_analytic_results.Rdata")
+
+```

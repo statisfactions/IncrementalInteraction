@@ -1,0 +1,357 @@
+---
+title: "Sillence simpr simulation, with skewness"
+output: html_output
+---
+
+Collapse all folds: Opt+Cmd+O
+```{r setup}
+library(tidyverse)
+library(simpr)
+library(InteractionPoweR)
+
+source("pwr_fns.R")
+```
+
+## Approach 1: From Reg Coefficients
+```{r params}
+##' first pass: should be analogous to model-specific simulation model output.
+##' Generate multivariate normal using attenuated correlations for x1 and x2.
+##' Generate y based on betas from power_interaction_r2 solution, roughly pasted below,
+##' and error variance based on (1-r2)
+##' 
+##' Note: I may not actually need to do all this complex calculation myself.  
+##' I could just use/leverage InteractionPowerR on a simple case 
+##' with detailed_results = TRUE to get the appropriate coefficients!
+##' 
+##' 
+params_all = power_interaction_r2(N = 500,
+                              r.x1.y = -0.18,
+                              r.x2.y = -0.03,
+                              r.x1.x2 = 0.64,
+                              r.x1x2.y = 0.1,
+                              rel.y = 0.79,
+                              rel.x1 = 0.89,
+                              rel.x2 = 0.95,
+                              alpha = 0.05,
+                              detailed_results = TRUE)
+
+params = params_all %>% 
+  select(b1, b2, b3, obs.r.x1.x2,
+         obs.r.x1.y, obs.r.x2.y, obs.r.x1x2.y) %>% 
+  mutate(r2 = (b1*obs.r.x1.y) + (b2*obs.r.x2.y) + (b3*obs.r.x1x2.y),
+         sigma = sqrt(1-r2))
+
+str(params)
+```
+### Single simulation
+
+```{r x_cor}
+x_cor = matrix(c(1, 
+                 params$obs.r.x1.x2,
+                 params$obs.r.x1.x2, 1), 
+               nrow = 2)
+options(digits = 3)
+x_cor
+```
+
+
+```{r}
+## Simulate x1 and x2
+set.seed(103)
+x_matrix = MASS::mvrnorm(n = 100,
+                         mu = c(0, 0), # mean vector
+                         Sigma = x_cor # covariance matrix
+) 
+colnames(x_matrix) = c("x1", "x2")
+
+## Simulate y based on x1 and x2
+result = x_matrix %>%
+  as_tibble %>% # convert to tibble
+  mutate(y = ## Sum of coefficients * predictors + error
+           params$b1 * x1 + 
+           params$b2 * x2 + 
+           params$b3 * x1 * x2 + 
+           rnorm(100, sd = params$sigma)
+         )
+```
+
+```{r}
+head(x_matrix)
+```
+```{r}
+result
+```
+```{r}
+mod = lm(y ~ x1 * x2, data = result)
+summary(mod)
+```
+
+### Simplified simpr simulation
+
+```{r nornal_sim_100}
+set.seed(1310)
+normal_sim_100 =
+  specify(x_matrix = c(x1, x2) ~ MASS::mvrnorm(n = 100, 
+                                               mu = rep(0, 2),
+                                               Sigma = x_cor),
+          y = ~ params$b1 * x1 + 
+            params$b2 * x2 + 
+            params$b3 * x1 * x2 + 
+            rnorm(100, sd = params$sigma)) %>% 
+  generate(50) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() 
+```
+
+```{r normal_sim_100_power}
+normal_sim_100_power = normal_sim_100 %>% 
+  filter(term %in% "x1:x2") %>% 
+  summarize(pwr = mean(p.value < 0.05))
+```
+
+### Normal-based simulation -- simplified
+
+```{r}
+set.seed(3105)
+normal_sim_vary_n = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = N, mu = rep(0, 2),
+                             Sigma = x_cor),
+              y = ~ params$b1 * x1 +
+                params$b2 * x2 + 
+                params$b3 * x1 * x2 + 
+                rnorm(N, sd = params$sigma)) %>% 
+  define(N = seq(500, 1500, by = 25)) %>% 
+  generate(50) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits()
+normal_sim_vary_n
+```
+```{r normal_sim_vary_n_power}
+normal_sim_vary_n_power = normal_sim_vary_n %>% 
+  group_by(N) %>% 
+  filter(term %in% "x1:x2") %>% 
+  summarize(pwr = mean(p.value < 0.05))
+```
+
+### Replicating the model-specific simulation in simpr
+```{r future_stuff}
+library(future)
+plan(multisession, workers = availableCores() - 1)
+```
+
+```{r}
+set.seed(310510)
+normal_sim = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = N, mu = rep(0, 2),
+                             Sigma = x_cor),
+              y = ~ params$b1 * x1 +
+                params$b2 * x2 + 
+                params$b3 * x1 * x2 + 
+                rnorm(N, sd = params$sigma)) %>% 
+  define(N = seq(500, 1500, by = 25)) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>% 
+  generate(10000, .progress = TRUE) 
+```
+
+```{r}
+normal_sim = readRDS("Sillence_simpr_normal.RDS")
+normal_sim = normal_sim %>% rename(N = n)
+```
+
+```{r}
+normal_sim_power = normal_sim %>% 
+  group_by(N) %>% 
+  filter(term %in% "x1:x2") %>% 
+  summarize(pwr = mean(p.value < 0.05))
+```
+
+### Custom simulation with range restriction
+```{r}
+set.seed(316847)
+
+range_sim = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = N, mu = rep(0, 2),
+                             Sigma = x_cor),
+              y = ~ params$b1 * x1 +
+                params$b2 * x2 + 
+                params$b3 * x1 * x2 + 
+                rnorm(N, sd = params$sigma)) %>% 
+  define(N = seq(500, 1500, by = 25)) %>% 
+  per_sim() %>% 
+  mutate(across(everything(), ~ case_when(
+		  .x > 1 ~ 1,
+	  .x < -1 ~ -1,
+	  TRUE ~ .x))) %>%  
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>% 
+  generate(10000, .progress = TRUE) 
+```
+
+## Original code for simulations
+
+### Normal-based simulation -- original
+
+```{r normal_sim}
+library(future)
+plan(multisession, workers = availableCores() - 1)
+
+set.seed(310510)
+normal_sim = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = n, mu = rep(0, 2),
+                             Sigma = matrix(c(1, r.x1.x2, 
+                                              r.x1.x2, 1), nrow = 2)),
+              y = ~ b1 * x1 + b2 * x2 + b3 * x1 * x2 + rnorm(n, sd = sigma)) %>% 
+  define(n = seq(500, 1500, by = 25),
+         r.x1.x2 = params$obs.r.x1.x2,
+         b1 = params$b1,
+         b2 = params$b2,
+         b3 = params$b3,
+         sigma = params$sigma) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>% 
+  generate(10000, .progress = TRUE)
+
+saveRDS(normal_sim, file = "Sillence_simpr_normal.RDS")
+```
+
+
+
+### Normal with range restriction
+
+```{r range_sim}
+library(future)
+plan(multisession, workers = 6)
+
+set.seed(316847)
+
+range_sim = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = n, mu = rep(0, 2),
+                             Sigma = matrix(c(1, r.x1.x2, 
+                                              r.x1.x2, 1), nrow = 2)),
+              y = ~ b1 * x1 + b2 * x2 + b3 * x1 * x2 + rnorm(n, sd = sigma)) %>% 
+  define(n = seq(500, 1500, by = 25),
+         r.x1.x2 = params$obs.r.x1.x2,
+         b1 = params$b1,
+         b2 = params$b2,
+         b3 = params$b3,
+         sigma = params$error_sd) %>% 
+  per_sim() %>% 
+  mutate(across(everything(), ~ case_when(
+		  .x > 1 ~ 1,
+	  .x < -1 ~ -1,
+	  TRUE ~ .x))) %>%  
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>% 
+  generate(10000, .progress = TRUE)
+
+save(normal_sim, range_sim, file = "Sillence_simpr_all.Rdata")
+
+```
+
+
+### Sanity check
+
+```{r sanity}
+library(future)
+
+plan(multisession)
+set.seed(1031)
+## sanity check
+sanity = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = n, mu = rep(0, 2),
+                             Sigma = matrix(c(1, r.x1.x2, 
+                                              r.x1.x2, 1), nrow = 2)),
+              x1x2 = ~ x1 * x2,
+              y = ~ b1 * x1 + b2 * x2 + b3 * x1x2 + rnorm(n)) %>% 
+  define(n = 100000,
+         r.x1.x2 = params$obs.r.x1.x2,
+         b1 = params$b1,
+         b2 = params$b2,
+         b3 = params$b3) %>% 
+  generate(1) 
+
+cor(sanity$sim[[1]])
+
+```
+
+```{r comparison}
+base::matrix(data = c(1, params$obs.r.x1.x2, params$obs.r.x1.x1x2, params$obs.r.x1.y,
+                      params$obs.r.x1.x2, 1, params$obs.r.x2.x1x2, params$obs.r.x2.y,
+                      params$obs.r.x1.x1x2, params$obs.r.x2.x1x2, 1, params$obs.r.x1x2.y, 
+                      params$obs.r.x1.y, params$obs.r.x2.y, params$obs.r.x1x2.y, 1), 
+             ncol = 4, byrow = TRUE)
+
+```
+
+```{r coefficients}
+
+sanity 
+
+```
+
+Betas are also reasonable, matching theory.  Yay.
+
+
+### generate_interaction
+
+```{r gen_inter}
+library(future)
+
+set.seed(1313)
+
+plan(multisession, workers = 6)
+gen_inter = specify(out = c(x1, x2, y, x1x2) ~ InteractionPoweR::generate_interaction(N = n,
+                              r.x1.y = -0.18,
+                              r.x2.y = -0.03,
+                              r.x1.x2 = 0.64,
+                              r.x1x2.y = 0.1,
+                              rel.y = 0.79,
+                              rel.x1 = 0.89,
+                              rel.x2 = 0.95)) %>% 
+  define(n = seq(500, 1500, by = 25)) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>%
+  generate(1000) 
+
+saveRDS(gen_inter, file = "gen_inter.RDS")
+
+```
+
+
+```{r}
+gen_inter %>% group_by(n) %>% 
+  sim_pwr
+```
+
+```{r gen_inter_base}
+
+library(tidyverse)
+library(furrr)
+
+iter_range = expand_grid(i = 1:10000, n = seq(500, 1500, by = 25))
+
+plan(multisession, workers = 6)
+
+gen_inter_furrr = future_map2_dfr(iter_range$i, iter_range$n, function(i, n) {
+    df = InteractionPoweR::generate_interaction(N = n,
+                              r.x1.y = -0.18,
+                              r.x2.y = -0.03,
+                              r.x1.x2 = 0.64,
+                              r.x1x2.y = 0.1,
+                              rel.y = 0.79,
+                              rel.x1 = 0.89,
+                              rel.x2 = 0.95) %>% 
+      lm(y ~ x1 + x2 + x1x2, data = .) %>% 
+      broom::tidy() %>% 
+      mutate(n = n,
+             i = i)
+  }, .progress = TRUE, .options = furrr_options(seed = 131451))
+
+
+
+```
+
+
+```{r}
+gen_inter_furrr_pwr = gen_inter_furrr %>%
+  filter(term %in% "x1x2") %>% 
+  group_by(n) %>% 
+  summarize(pwr = mean(p.value < 0.05), .groups = "drop")
+
+saveRDS(gen_inter_furrr, "gen_inter_furrr.RDS")
+```

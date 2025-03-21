@@ -1,0 +1,65 @@
+---
+title: "Sillence_model_specific"
+author: "Ethan C. Brown"
+date: "2022-11-19"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(InteractionPoweR)
+library(tidyverse)
+source("pwr_fns.R")
+```
+
+## Simulations
+
+```{r ipr_sim_x2_4}
+ipr_sim_x2_4 = power_interaction(cl = 6,
+                                 n.iter = 10000,
+                                 N = seq(500, 2200, by = 25),
+                                 r.x1.y = -0.18,
+                                 r.x2.y = -0.03,
+                                 r.x1.x2 = 0.64,
+                                 r.x1x2.y = 0.1,
+                                 rel.y = 0.79,
+                                 rel.x1 = 0.89,
+                                 rel.x2 = 0.95,
+                                 alpha = 0.05,
+                                 k.x2 = 4,
+                                 detailed_results = TRUE
+)
+
+save(ipr_sim_x2_4, file = "ipr_sim_x2_4.Rdata")
+
+ipr_sim_x2_4 %>% 
+  calc_pwr
+```
+
+
+
+
+
+
+```{r ipr_sim_c}
+set.seed(3105)
+ipr_sim_c = InteractionPoweR::power_interaction(cl = 6,
+                                 n.iter = 10000,
+                                 N = seq(500, 1500, by = 25),
+                                 r.x1.y = -0.18,
+                                 r.x2.y = -0.03,
+                                 r.x1.x2 = 0.64,
+                                 r.x1x2.y = 0.1,
+                                 rel.y = 0.79,
+                                 rel.x1 = 0.89,
+                                 rel.x2 = 0.95,
+                                 alpha = 0.05,
+                                 detailed_results = TRUE
+)
+
+saveRDS(ipr_sim_c, file = "ipr_sim_c.RDS")
+
+ipr_sim_c %>% 
+  calc_pwr
+```
+

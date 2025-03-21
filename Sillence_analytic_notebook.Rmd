@@ -1,0 +1,200 @@
+---
+title: "Sillence_InteractionPowerR"
+author: "Ethan C. Brown"
+date: "2022-12-12"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(InteractionPoweR)
+library(tidyverse)
+library(pwr2ppl)
+
+```
+
+Replicate analysis from correlations alone
+```{r replicate_corr}
+
+## y = SFU
+## x1 = FA
+## x2 = SA
+MRC_shortcuts(ry1=-.18,
+    ry2=-.03,
+    ry3=-0.02, 
+    r12=.64,
+    ## Drawn from supplemental materials
+    ## Unfortunately, these correlations would be drawn from summed (not centered) variables
+    ## Correlations may differ when centered?
+    r13=.47,
+    r23=.42,
+    n=542)
+```
+Post hoc "power"
+```{r posthoc}
+MRC(ry1=-.18,
+    ry2=-.03,
+    ry3=-0.02, 
+    r12=.64,
+    r13=.47,
+    r23=.42,
+    n=542)
+```
+
+Effect size of 0.01 (which is somewhat ambitious already)
+
+```{r sillence_pwr2ppl}
+sillence_pwr2ppl = regintR2(R2Mod = 0.06,
+         R2Ch = 0.01,
+         mod_pred = 3,
+         ch_pred = 1,
+         nlow = 500,
+         nhigh = 1500,
+         by = 25)
+
+sillence_pwr2ppl %>% 
+  filter(Power > 0.8) %>% 
+  filter(Power == min(Power))
+```
+This approach predicts that we need n = 750 to get to Power = 0.80 using this analytical approach.
+
+We can plot the power curve as well.
+
+```{r sillence_pwr2ppl_plot}
+sillence_pwr2ppl %>% 
+  ggplot(aes(n, Power)) + 
+  geom_line() + geom_hline(yintercept = 0.8, color = "blue", linetype = "dashed")
+```
+
+## InteractionPowerR
+
+### Calculate R2
+
+What correlation between x1x2 and y corresponds with an R^2 change of 0.01?
+```{r ipr_an_r2}
+ipr_an_r2 = power_interaction_r2(N = 500,
+                                                  r.x1.y = -0.18,
+                                                  r.x2.y = -0.03,
+                                                  r.x1.x2 = 0.64,
+                                                  r.x1x2.y = seq(0.1, 0.11, by = 0.001),
+                                                  alpha = 0.05,
+                                   detailed_results = TRUE) %>% 
+mutate(totalr2 = (b1*r.x1.y) + (b2*r.x2.y) + (b3*r.x1x2.y),
+       null2 = (b1*r.x1.y) + (b2*r.x2.y),
+       r2change = totalr2-null2)
+
+power_interaction_r2(N = 500,
+                                                  r.x1.y = -0.18,
+                                                  r.x2.y = -0.03,
+                                                  r.x1.x2 = 0.64,
+                                                  r.x1x2.y = 0.1,
+                                                  alpha = 0.05,
+                                   detailed_results = TRUE) %>% 
+mutate(totalr2 = (b1*r.x1.y) + (b2*r.x2.y) + (b3*r.x1x2.y),
+       null2 = (b1*r.x1.y) + (b2*r.x2.y),
+       r2change = totalr2-null2)
+
+
+ipr_an_r2_result = ipr_an_r2 %>% 
+  filter(r2change > 0.01) %>% 
+  filter(r2change == min(r2change)) %>%
+  distinct %>% 
+  select(r.x1x2.y, pwr, totalr2, null2, r2change)
+  
+
+ipr_an_r2_result
+
+```
+```{r regintR2_comparison}
+library(pwr2ppl)
+regintR2_comparison = regintR2(R2Mod = 0.0547,
+         R2Ch = 0.01,
+         mod_pred = 3,
+         ch_pred = 1,
+         nlow = 500,
+         nhigh = 500,
+         by = 100)
+```
+```{r MRC}
+MRC(ry1=-.18,
+    ry2=-.03,
+    ry3=0.10,
+    r12=.64,
+    r13=0,
+    r23=0,
+    n = 500,
+    alpha = 0.05)
+```
+
+
+### Perfect reliability
+
+```{r ipr_an_r1.0, echo = TRUE}
+ipr_an_r1.0 = power_interaction_r2(N = seq(500, 1500, by = 0.25),
+                                                  r.x1.y = -0.18,
+                                                  r.x2.y = -0.03,
+                                                  r.x1.x2 = 0.64,
+                                                  r.x1x2.y = 0.1,
+                                                  alpha = 0.05,
+                                   detailed_results = TRUE)
+ipr_an_r1.0_0.8 = ipr_an_r1.0 %>% 
+  filter(pwr > 0.8) %>% 
+  filter(pwr == min(pwr)) %>% 
+  distinct
+
+ipr_an_r1.0_0.8
+
+```
+```{r ipr_an_r1.0_n500}
+ipr_an_r1.0_n500 = power_interaction_r2(N = 500,
+                                        r.x1.y = -0.18,
+                                        r.x2.y = -0.03,
+                                        r.x1.x2 = 0.64,
+                                        r.x1x2.y = seq(0.1, 0.2, by = 0.01),
+                                        alpha = 0.05)
+
+ipr_an_r1.0_n500 %>% 
+  filter(pwr > 0.8) %>% 
+  filter(pwr == min(pwr)) %>% 
+  distinct
+```
+
+```{r plot_ipr_an_r1.0}
+ipr_an_r1.0 %>% 
+  ggplot(aes(N, pwr)) +
+  geom_line() +
+  geom_hline(yintercept = 0.8, color = "blue", linetype = "dashed")
+
+```
+
+### Reported reliability
+```{r ipr_an}
+ipr_an = power_interaction_r2(N = seq(500, 1500, by = 0.25),
+                              r.x1.y = -0.18,
+                              r.x2.y = -0.03,
+                              r.x1.x2 = 0.64,
+                              r.x1x2.y = 0.1,
+                              rel.y = 0.79,
+                              rel.x1 = 0.89,
+                              rel.x2 = 0.95,
+                              alpha = 0.05)
+
+ipr_an %>% 
+  filter(pwr > 0.8) %>% 
+  filter(pwr == min(pwr)) %>% 
+  distinct
+
+```
+When unreliability factored in, much higher N needed even for power of 0.8!
+```{r plot_ipr_an}
+ipr_an %>% 
+  ggplot(aes(N, pwr)) +
+  geom_line() +
+  geom_hline(yintercept = 0.8, color = "blue", linetype = "dashed")
+
+```
+## Save results
+```{r Sillence_analytic_results.Rdata}
+save(sillence_pwr2ppl, ipr_an_r2, ipr_an_r1.0, ipr_an, file = "Sillence_analytic_results.Rdata")
+```
+

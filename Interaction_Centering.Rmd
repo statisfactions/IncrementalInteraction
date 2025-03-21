@@ -1,0 +1,16 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lavaan)
+
+
+MASS::mvrnorm(1000000, mu = c(0,0), Sigma = getCov(0.5, diagonal = FALSE)) %>% 
+  as_tibble %>% 
+  mutate(V12 = V1 * V2) %>% 
+  cor
+```
+
