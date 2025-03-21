@@ -164,6 +164,26 @@ normal_sim_power = normal_sim %>%
   summarize(pwr = mean(p.value < 0.05))
 ```
 
+### Custom simulation with gamma error
+```{r}
+set.seed(310510)
+gamma_sim = specify(preds = c(x1, x2) ~ MASS::mvrnorm(n = N, mu = rep(0, 2),
+                             Sigma = x_cor),
+              y = ~ p$b1 * x1 +
+                p$b2 * x2 + 
+                p$b3 * x1 * x2 + 
+                rgamma(N, shape = 1, scale = p$sigma) - p$sigma) %>% 
+  define(N = seq(500, 1500, by = 25)) %>% 
+  fit(lm =~ lm(y ~ x1*x2)) %>% 
+  tidy_fits() %>% 
+  generate(10000, .progress = TRUE) 
+```
+
+```{r}
+saveRDS(gamma_sim, file = "gamma_sim.RDS")
+```
+
+
 ### Custom simulation with range restriction
 ```{r}
 set.seed(316847)
