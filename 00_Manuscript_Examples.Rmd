@@ -166,7 +166,7 @@ c.0_replicate =   specify(             # Specify data-generating process
                   by = 25)        # Interval of sample sizes attempted
  ) %>%  fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
     tidy_fits() %>%                # Run broom::tidy on each model
-  generate(10000)                # Generate 10,000 replications
+  generate(10000, .progress = TRUE)                # Generate 10,000 replications
 ```
 
 ```{r c.0_replicate_power}
@@ -199,7 +199,7 @@ c.1_gamma =   specify(             # Specify data-generating process
                  by = 25)       # Interval of sample sizes attempted
  ) %>%  fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
     tidy_fits() %>%                # Run broom::tidy on each model
-  generate(10000)                # Generate 10,000 replications
+  generate(10000,  .progress = TRUE)                # Generate 10,000 replications
 ```
 
 ```{r c.1_range}
@@ -231,7 +231,7 @@ c.1_range =   specify(             # Specify data-generating process
            TRUE ~ .x))                # Otherwise keep x the same
     ) %>%      fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
     tidy_fits() %>%                # Run broom::tidy on each model
-  generate(10000)                # Generate 10,000 replications
+  generate(10000,  .progress = TRUE)                # Generate 10,000 replications
 ```
 
 ```{r save_all}
