@@ -9,9 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r regintR2}
+```{r a.0_basic}
 library(pwr2ppl) 
-regintR2(R2Mod = 0.06,       # R2 for main effects
+a.0_basic = regintR2(R2Mod = 0.06,       # R2 for main effects
           R2Ch = 0.01,        # R2 change for interaction effect 
           mod_pred = 3,       # Total number of predictors
           ch_pred = 1,        # Number of interaction effects
@@ -21,9 +21,9 @@ regintR2(R2Mod = 0.06,       # R2 for main effects
          alpha = 0.05)       # Alpha-level for rejecting null
 ```
 
-```{r}
+```{r a.1_suppression}
 library(InteractionPoweR) 
-ipr_an_r1.0 =   power_interaction_r2(
+a.1_suppression =   power_interaction_r2(
           N = seq(500,          # Minimum sample size examined
                           1500,         # Maximum sample size examined
                   by = 25),     # Interval of sample sizes attempted
@@ -34,9 +34,8 @@ ipr_an_r1.0 =   power_interaction_r2(
            alpha = 0.05)         # Alpha-level for rejecting null
 ```
 
-```{r}
-library(InteractionPoweR) 
-ipr_an_r1.0_n500 =   power_interaction_r2(
+```{r a.1_vary_cors}
+a.1_vary_cors =   power_interaction_r2(
           N = 500,             # Sample size examined
            r.x1.y = -0.18,      # Correlation of x1 with y (response)
            r.x2.y = -0.03,      # Correlation of x2 with y
@@ -47,9 +46,8 @@ ipr_an_r1.0_n500 =   power_interaction_r2(
              alpha = 0.05)      # Alpha-level for rejecting null
 ```
 
-```{r}
-library(InteractionPoweR) 
-ipr_an =   power_interaction_r2(
+```{r a.2_measurement}
+a.2_measurement =   power_interaction_r2(
           N = seq(500,          # Minimum sample size examined
                           1500,         # Maximum sample size examined
                   by = 25),     # Interval of sample sizes attempted
@@ -63,9 +61,9 @@ ipr_an =   power_interaction_r2(
            alpha = 0.05)         # Alpha-level for rejecting null
 ```
 
-```{r}
+```{r b.0_replicate}
 set.seed(31051)                 # Set random seed for reproducibility
-ipr_sim_x2_4 =  power_interaction(
+b.0_replicate =  power_interaction(
           cl = 6,               # Number of computing clusters
           m.iter = 1000,        # Number of simulation replications
           N = seq(500,          # Minimum sample size examined
@@ -81,9 +79,9 @@ ipr_sim_x2_4 =  power_interaction(
            alpha = 0.05)         # Alpha-level for rejecting null
 ```
 
-```{r}
+```{r b.1_extensions}
 set.seed(31051)                 # Set random seed for reproducibility
-ipr_sim_x2_4 =  power_interaction(
+b.1_extensions =  power_interaction(
           cl = 6,               # Number of computing clusters
           m.iter = 1000,        # Number of simulation replications
           N = seq(500,          # Minimum sample size examined
@@ -101,7 +99,7 @@ ipr_sim_x2_4 =  power_interaction(
            k.x2 = 2)             # Number possible values for x2
 ```
 
-```{r}
+```{r p}
 library(simpr.interaction) 
 p = interaction_params(
           r.x1.y = -0.18,       # Correlation of x1 with y (response)
@@ -114,9 +112,10 @@ p = interaction_params(
 )
 ```
 
-```{r}
+```{r c.0_example}
+library(simpr)
 set.seed(31051)                 # Set random seed for reproducibility
-normal_sim_100 =   specify(             # Specify data-generating process
+c.0_example =   specify(             # Specify data-generating process
     X =                  # Generate predictor matrix
             c(x1, x2) ~            # Name predictors x1 and x2 
          MASS::mvrnorm(     # Generate as multivariate normal
@@ -134,21 +133,21 @@ normal_sim_100 =   specify(             # Specify data-generating process
   generate(50)                   # Generate 50 replications
 ```
 
-```{r}
-normal_sim_100_power = normal_sim_100 %>%
+```{r c.0_example_power}
+c.0_example_power = c.0_example %>%
    filter(term == "x1:x2") %>%              # Filter to interactions
   summarize(pwr = mean(p.value < 0.05))    # Calculate power
 ```
 
-```{r}
+```{r plan}
 library(future)
 plan(multisession,                      # Allow parallel processing
     workers = availableCores() - 1)    # Use all but 1 compute core
 ```
 
-```{r}
+```{r c.0_replicate}
 set.seed(31051)                 # Set random seed for reproducibility
-normal_sim =   specify(             # Specify data-generating process
+c.0_replicate =   specify(             # Specify data-generating process
     X =                  # Generate predictor matrix
             c(x1, x2) ~            # Name predictors x1 and x2 
          MASS::mvrnorm(     # Generate as multivariate normal
@@ -170,16 +169,16 @@ normal_sim =   specify(             # Specify data-generating process
   generate(10000)                # Generate 10,000 replications
 ```
 
-```{r}
-normal_sim_power = normal_sim %>%
+```{r c.0_replicate_power}
+c.0_replicate_power = normal_sim %>%
     group_by(N) %>%                          # Group by sample size
   filter(term == "x1:x2") %>%              # Filter to interactions
   summarize(pwr = mean(p.value < 0.05))    # Calculate power
 ```
 
-```{r}
+```{r c.1_gamma}
 set.seed(31051)                 # Set random seed for reproducibility
-normal_sim =   specify(             # Specify data-generating process
+c.1_gamma =   specify(             # Specify data-generating process
     X =                  # Generate predictor matrix
             c(x1, x2) ~            # Name predictors x1 and x2 
          MASS::mvrnorm(     # Generate as multivariate normal
@@ -203,9 +202,9 @@ normal_sim =   specify(             # Specify data-generating process
   generate(10000)                # Generate 10,000 replications
 ```
 
-```{r}
+```{r c.1_range}
 set.seed(31051)                 # Set random seed for reproducibility
-normal_sim =   specify(             # Specify data-generating process
+c.1_range =   specify(             # Specify data-generating process
     X =                  # Generate predictor matrix
             c(x1, x2) ~            # Name predictors x1 and x2 
          MASS::mvrnorm(     # Generate as multivariate normal
