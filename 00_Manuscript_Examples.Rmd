@@ -1,0 +1,236 @@
+---
+title: "00_Manuscript_Examples.Rmd"
+author: "Ethan Brown"
+date: "2025-03-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r regintR2}
+library(pwr2ppl) 
+regintR2(R2Mod = 0.06,       # R2 for main effects
+          R2Ch = 0.01,        # R2 change for interaction effect 
+          mod_pred = 3,       # Total number of predictors
+          ch_pred = 1,        # Number of interaction effects
+          nlow = 500,         # Minimum sample size examined
+          nhigh = 1500,       # Maximum sample size examined 
+          by = 25,            # Interval of sample sizes attempted
+         alpha = 0.05)       # Alpha-level for rejecting null
+```
+
+```{r}
+library(InteractionPoweR) 
+ipr_an_r1.0 =   power_interaction_r2(
+          N = seq(500,          # Minimum sample size examined
+                          1500,         # Maximum sample size examined
+                  by = 25),     # Interval of sample sizes attempted
+           r.x1.y = -0.18,       # Correlation of x1 with y (response)
+              r.x2.y = -0.03,       # Correlation of x2 with y 
+           r.x1.x2 = 0.64,       # Correlation of x1 with x2
+            r.x1x2.y = 0.1,       # Correlation of interaction with y
+           alpha = 0.05)         # Alpha-level for rejecting null
+```
+
+```{r}
+library(InteractionPoweR) 
+ipr_an_r1.0_n500 =   power_interaction_r2(
+          N = 500,             # Sample size examined
+           r.x1.y = -0.18,      # Correlation of x1 with y (response)
+           r.x2.y = -0.03,      # Correlation of x2 with y
+           r.x1.x2 = 0.64,      # Correlation of x1 with x2
+              r.x1x2.y = seq(0.1,         # Min x1:x2 correlation
+                           0.2,         # Max x1:x2 correlation 
+                            by = 0.01),  # Interval for correlation
+             alpha = 0.05)      # Alpha-level for rejecting null
+```
+
+```{r}
+library(InteractionPoweR) 
+ipr_an =   power_interaction_r2(
+          N = seq(500,          # Minimum sample size examined
+                          1500,         # Maximum sample size examined
+                  by = 25),     # Interval of sample sizes attempted
+           r.x1.y = -0.18,       # Correlation of x1 with y (response)
+              r.x2.y = -0.03,       # Correlation of x2 with y
+           r.x1.x2 = 0.64,       # Correlation of x1 with x2 
+            r.x1x2.y = 0.1,       # Correlation of interaction with y
+           rel.y = 0.79,         # Reliability of y
+           rel.x1 = 0.89,        # Reliability of x1
+           rel.x2 = 0.95,        # Reliability of x2
+           alpha = 0.05)         # Alpha-level for rejecting null
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+ipr_sim_x2_4 =  power_interaction(
+          cl = 6,               # Number of computing clusters
+          m.iter = 1000,        # Number of simulation replications
+          N = seq(500,          # Minimum sample size examined
+                          1500,         # Maximum sample size examined
+                  by = 25),     # Interval of sample sizes attempted
+           r.x1.y = -0.18,       # Correlation of x1 with y (response)
+              r.x2.y = -0.03,       # Correlation of x2 with y
+           r.x1.x2 = 0.64,       # Correlation of x1 with x2 
+            r.x1x2.y = 0.1,       # Correlation of interaction with y
+           rel.y = 0.79,         # Reliability of y
+           rel.x1 = 0.89,        # Reliability of x1
+           rel.x2 = 0.95,        # Reliability of x2
+           alpha = 0.05)         # Alpha-level for rejecting null
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+ipr_sim_x2_4 =  power_interaction(
+          cl = 6,               # Number of computing clusters
+          m.iter = 1000,        # Number of simulation replications
+          N = seq(500,          # Minimum sample size examined
+                          1500,         # Maximum sample size examined
+                  by = 25),     # Interval of sample sizes attempted
+           r.x1.y = -0.18,       # Correlation of x1 with y (response)
+              r.x2.y = -0.03,       # Correlation of x2 with y
+           r.x1.x2 = 0.64,       # Correlation of x1 with x2 
+            r.x1x2.y = 0.1,       # Correlation of interaction with y
+           rel.y = 0.79,         # Reliability of y
+           rel.x1 = 0.89,        # Reliability of x1
+           rel.x2 = 0.95,        # Reliability of x2
+           alpha = 0.05,         # Alpha-level for rejecting null
+           k.y = 4,              # Number possible values for y
+           k.x2 = 2)             # Number possible values for x2
+```
+
+```{r}
+library(simpr.interaction) 
+p = interaction_params(
+          r.x1.y = -0.18,       # Correlation of x1 with y (response)
+              r.x2.y = -0.03,       # Correlation of x2 with y
+           r.x1.x2 = 0.64,       # Correlation of x1 with x2 
+            r.x1x2.y = 0.1,       # Correlation of interaction with y
+           rel.y = 0.79,         # Reliability of y
+           rel.x1 = 0.89,        # Reliability of x1
+           rel.x2 = 0.95        # Reliability of x2 
+)
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+normal_sim_100 =   specify(             # Specify data-generating process
+    X =                  # Generate predictor matrix
+            c(x1, x2) ~            # Name predictors x1 and x2 
+         MASS::mvrnorm(     # Generate as multivariate normal
+          n = 100,             # - Sample size of 100 
+           mu = c(0, 0),        # - Mean 0 for both predictors
+           Sigma = p$cov),   # Covariance matrix (specified above)
+   y =                  # Simulate outcome: sum of
+            ~ p$b1 * x1 +        # Slope times x1
+            p$b2 * x2 +          # Slope times x2
+            p$b3 * x1 * x2 +     # Slope times interaction
+            rnorm(n = 100,         # Random normal error
+                  sd = p$sigma     # sd matches sigma
+                 )) %>%  fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
+    tidy_fits() %>%                # Run broom::tidy on each model
+  generate(50)                   # Generate 50 replications
+```
+
+```{r}
+normal_sim_100_power = normal_sim_100 %>%
+   filter(term == "x1:x2") %>%              # Filter to interactions
+  summarize(pwr = mean(p.value < 0.05))    # Calculate power
+```
+
+```{r}
+library(future)
+plan(multisession,                      # Allow parallel processing
+    workers = availableCores() - 1)    # Use all but 1 compute core
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+normal_sim =   specify(             # Specify data-generating process
+    X =                  # Generate predictor matrix
+            c(x1, x2) ~            # Name predictors x1 and x2 
+         MASS::mvrnorm(     # Generate as multivariate normal
+          n =  N ,               # - Sample size is `N`
+           mu = c(0, 0),        # - Mean 0 for both predictors
+           Sigma = p$cov),   # Covariance matrix (specified above)
+   y =                  # Simulate outcome: sum of
+            ~ p$b1 * x1 +        # Slope times x1
+            p$b2 * x2 +          # Slope times x2
+            p$b3 * x1 * x2 +     # Slope times interaction
+            rnorm(n =  N ,         # Random normal error
+                  sd = p$sigma     # sd matches sigma
+                 )) %>%    define(                # Define varying parameters, here `N`
+          N = seq(500,            # Minimum sample size examined
+                          1500,           # Maximum sample size examined
+                  by = 25)        # Interval of sample sizes attempted
+ ) %>%  fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
+    tidy_fits() %>%                # Run broom::tidy on each model
+  generate(10000)                # Generate 10,000 replications
+```
+
+```{r}
+normal_sim_power = normal_sim %>%
+    group_by(N) %>%                          # Group by sample size
+  filter(term == "x1:x2") %>%              # Filter to interactions
+  summarize(pwr = mean(p.value < 0.05))    # Calculate power
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+normal_sim =   specify(             # Specify data-generating process
+    X =                  # Generate predictor matrix
+            c(x1, x2) ~            # Name predictors x1 and x2 
+         MASS::mvrnorm(     # Generate as multivariate normal
+          n = N,               # - Sample size is `N`
+           mu = c(0, 0),        # - Mean 0 for both predictors
+           Sigma = p$cov),   # Covariance matrix (specified above)
+   y =                  # Simulate outcome: sum of
+            ~ p$b1 * x1 +        # Slope times x1
+            p$b2 * x2 +          # Slope times x2
+            p$b3 * x1 * x2 +     # Slope times interaction
+             rgamma( n = N,         # Random gamma error
+                  shape = 1,        # shape parameter
+                  scale = p$sigma   # scale is sigma
+                 ) -  p$sigma ) %>% # adjust mean to 0
+ define(               # Define varying parameters, here `N`
+         N = seq(500,           # Minimum sample size examined
+                         1500,          # Maximum sample size examined
+                 by = 25)       # Interval of sample sizes attempted
+ ) %>%  fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
+    tidy_fits() %>%                # Run broom::tidy on each model
+  generate(10000)                # Generate 10,000 replications
+```
+
+```{r}
+set.seed(31051)                 # Set random seed for reproducibility
+normal_sim =   specify(             # Specify data-generating process
+    X =                  # Generate predictor matrix
+            c(x1, x2) ~            # Name predictors x1 and x2 
+         MASS::mvrnorm(     # Generate as multivariate normal
+          n = N,               # - Sample size is `N`
+           mu = c(0, 0),        # - Mean 0 for both predictors
+           Sigma = p$cov),   # Covariance matrix (specified above)
+   y =                  # Simulate outcome: sum of
+            ~ p$b1 * x1 +        # Slope times x1
+            p$b2 * x2 +          # Slope times x2
+            p$b3 * x1 * x2 +     # Slope times interaction
+            rgamma(n = N,         # Random gamma error
+                 shape = 1,       # shape parameter
+                 scale = p$sigma  # scale is sigma
+                 ) - p$sigma) %>% # adjust mean to 0
+ define(               # Define varying parameters, here `N`
+         N = seq(500,           # Minimum sample size examined
+                         1500,          # Maximum sample size examined
+                 by = 25)       # Interval of sample sizes attempted
+ ) %>%    per_sim() %>%                   # Access each simulation for mutate
+    mutate(across(everything(),     # Mutate all columns
+      ~ case_when(                  # Conditionally replace values:
+           .x > 1 ~ 1,                # Replace x > 1 with 1
+           .x < -1 ~ -1,              # Replace x < 1 with -1
+           TRUE ~ .x))                # Otherwise keep x the same
+    ) %>%      fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
+    tidy_fits() %>%                # Run broom::tidy on each model
+  generate(10000)                # Generate 10,000 replications
+```
