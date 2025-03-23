@@ -233,3 +233,9 @@ c.1_range =   specify(             # Specify data-generating process
     tidy_fits() %>%                # Run broom::tidy on each model
   generate(10000)                # Generate 10,000 replications
 ```
+
+```{r save_all}
+save.image(file = "Manuscript_Code_Output.Rdata")
+
+```
+
