@@ -235,6 +235,37 @@ c.1_range =   specify(             # Specify data-generating process
   generate(10000,  .progress = TRUE)                # Generate 10,000 replications
 ```
 
+```{r c.1_range_normal}
+set.seed(31051)                 # Set random seed for reproducibility
+c.1_range_normal =   specify(             # Specify data-generating process
+    X =                  # Generate predictor matrix
+            c(x1, x2) ~            # Name predictors x1 and x2 
+         MASS::mvrnorm(     # Generate as multivariate normal
+          n = N,               # - Sample size is `N`
+           mu = c(0, 0),        # - Mean 0 for both predictors
+           Sigma = p$cov),   # Covariance matrix (specified above)
+   y =                  # Simulate outcome: sum of
+            ~ p$b1 * x1 +        # Slope times x1
+            p$b2 * x2 +          # Slope times x2
+            p$b3 * x1 * x2 +     # Slope times interaction
+            rnorm(n =  N ,         # Random normal error
+                  sd = p$sigma     # sd matches sigma
+                 )) %>%  
+ define(               # Define varying parameters, here `N`
+         N = seq(500,           # Minimum sample size examined
+                         1500,          # Maximum sample size examined
+                 by = 25)       # Interval of sample sizes attempted
+ ) %>%    per_sim() %>%                   # Access each simulation for mutate
+    mutate(across(everything(),     # Mutate all columns
+      ~ case_when(                  # Conditionally replace values:
+           .x > 1 ~ 1,                # Replace x > 1 with 1
+           .x < -1 ~ -1,              # Replace x < 1 with -1
+           TRUE ~ .x))                # Otherwise keep x the same
+    ) %>%      fit(lm =~ lm(y ~ x1*x2)) %>%   # Fit linear interaction model
+    tidy_fits() %>%                # Run broom::tidy on each model
+  generate(10000,  .progress = TRUE)                # Generate 10,000 replications
+```
+
 ```{r save_all}
 save.image(file = "Manuscript_Code_Output.Rdata")
 
